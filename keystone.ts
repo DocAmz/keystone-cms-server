@@ -14,6 +14,7 @@ import { lists } from './schema';
 import { storageConfig } from './storage.config';
 import { type TypeInfo, type Context } from '.keystone/types'
 import { getPages } from './routes/pages';
+import { ensureToken } from './access/access';
 
 // authentication is configured separately here too, but you might move this elsewhere
 // when you write your list-level access control functions, as they typically rely on session data
@@ -24,7 +25,7 @@ function withContext<F extends (req: Request, res: Response, context: Context) =
   f: F
 ) {
   return async (req: Request, res: Response) => {
-    return f(req, res, await commonContext.withRequest(req, res))
+    ensureToken(req, res, () => f(req, res, commonContext));
   }
 }
 
@@ -40,6 +41,9 @@ export default withAuth(
     server: {
       extendExpressApp: (app, commonContext) => {
         app.use(cors({ origin: 'http://localhost:3001'}));
+        app.get("/api", withContext(commonContext, (req, res, context) => {
+          res.render('index', { title: 'Express' })
+        }))
         app.get('/api/pages', withContext(commonContext, getPages))
         // app.put('/rest/tasks', withContext(commonContext, putTask));
       },

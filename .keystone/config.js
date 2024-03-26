@@ -209,6 +209,50 @@ async function getPages(req, res, context) {
   res.json(pages);
 }
 
+// access/access.ts
+var import_jsonwebtoken = __toESM(require("jsonwebtoken"));
+var import_roarr = require("roarr");
+function ensureToken(req, res, next) {
+  const bearerHeader = req.headers["authorization"];
+  if (typeof bearerHeader !== "undefined") {
+    try {
+      const bearer = bearerHeader.split(" ");
+      const bearerToken = bearer[1];
+      const secretKey = process.env.JWT_SECRET_KEY;
+      if (!secretKey) {
+        console.error("JWT_SECRET_KEY is not set in the environment");
+        res.sendStatus(500);
+      } else {
+        const decodedToken = import_jsonwebtoken.default.verify(bearerToken, secretKey);
+        const frontAPIkey = process.env.FRONT_API_KEY;
+        console.log(decodedToken);
+        if (typeof decodedToken !== "object") {
+          console.error("Invalid token");
+          res.statusMessage = "Invalid token";
+          res.sendStatus(403);
+        }
+        if (typeof decodedToken === "object" && !decodedToken.hasOwnProperty("sub")) {
+          console.error("Invalid token: sub missing");
+          res.statusMessage = "Invalid token: sub missing";
+          res.sendStatus(403);
+        }
+        if (decodedToken.sub !== frontAPIkey) {
+          console.error("Invalid token: API_KEY value");
+          res.statusMessage = "Invalid token: API_KEY value";
+          res.sendStatus(403);
+        }
+        req.token = bearerToken;
+        next();
+      }
+    } catch (err) {
+      import_roarr.Roarr.error(err);
+      res.sendStatus(403);
+    }
+  } else {
+    res.sendStatus(403);
+  }
+}
+
 // auth.ts
 var import_crypto = require("crypto");
 var import_auth = require("@keystone-6/auth");
@@ -245,7 +289,7 @@ var session = (0, import_session.statelessSessions)({
 // keystone.ts
 function withContext(commonContext, f) {
   return async (req, res) => {
-    return f(req, res, await commonContext.withRequest(req, res));
+    ensureToken(req, res, () => f(req, res, commonContext));
   };
 }
 var keystone_default = withAuth(
@@ -260,6 +304,9 @@ var keystone_default = withAuth(
     server: {
       extendExpressApp: (app, commonContext) => {
         app.use((0, import_cors.default)({ origin: "http://localhost:3001" }));
+        app.get("/api", withContext(commonContext, (req, res, context) => {
+          res.render("index", { title: "Express" });
+        }));
         app.get("/api/pages", withContext(commonContext, getPages));
       }
     },
