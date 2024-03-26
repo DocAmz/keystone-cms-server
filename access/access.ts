@@ -31,8 +31,6 @@ export function ensureToken(req: Request, res: Response, next: NextFunction): vo
         const decodedToken = jwt.verify(bearerToken, secretKey);
         const frontAPIkey = process.env.FRONT_API_KEY;
 
-        console.log(decodedToken);
-
         if (typeof decodedToken !== 'object') {
           console.error('Invalid token');
           res.statusMessage = 'Invalid token';

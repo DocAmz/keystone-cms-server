@@ -50,3 +50,13 @@ model Page {
   attachment_filename String?
   isPublished         Boolean @default(false)
 }
+
+model Message {
+  id          String  @id @default(cuid())
+  name        String  @default("")
+  email       String  @default("")
+  phone       String  @default("")
+  enquiryType String  @default("")
+  message     String  @default("")
+  date        String?
+}

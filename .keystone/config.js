@@ -43,43 +43,24 @@ var import_fields = require("@keystone-6/core/fields");
 var import_fields_document = require("@keystone-6/fields-document");
 var lists = {
   User: (0, import_core.list)({
-    // WARNING
-    //   for this starter project, anyone can create, query, update and delete anything
-    //   if you want to prevent random people on the internet from accessing your data,
-    //   you can find out more at https://keystonejs.com/docs/guides/auth-and-access-control
     access: import_access.allowAll,
-    // this is the fields for our User list
     fields: {
-      // by adding isRequired, we enforce that every User should have a name
-      //   if no name is provided, an error will be displayed
       name: (0, import_fields.text)({ validation: { isRequired: true } }),
       email: (0, import_fields.text)({
         validation: { isRequired: true },
-        // by adding isIndexed: 'unique', we're saying that no user can have the same
-        // email as another user - this may or may not be a good idea for your project
         isIndexed: "unique"
       }),
       password: (0, import_fields.password)({ validation: { isRequired: true } }),
-      // we can use this field to see what Posts this User has authored
-      //   more on that in the Post list below
       posts: (0, import_fields.relationship)({ ref: "Post.author", many: true }),
       createdAt: (0, import_fields.timestamp)({
-        // this sets the timestamp to Date.now() when the user is first created
         defaultValue: { kind: "now" }
       })
     }
   }),
   Post: (0, import_core.list)({
-    // WARNING
-    //   for this starter project, anyone can create, query, update and delete anything
-    //   if you want to prevent random people on the internet from accessing your data,
-    //   you can find out more at https://keystonejs.com/docs/guides/auth-and-access-control
     access: import_access.allowAll,
-    // this is the fields for our Post list
     fields: {
       title: (0, import_fields.text)({ validation: { isRequired: true } }),
-      // the document field can be used for making rich editable content
-      //   you can find out more at https://keystonejs.com/docs/guides/document-fields
       content: (0, import_fields_document.document)({
         formatting: true,
         layouts: [
@@ -92,11 +73,8 @@ var lists = {
         links: true,
         dividers: true
       }),
-      // with this field, you can set a User as the author for a Post
       author: (0, import_fields.relationship)({
-        // we could have used 'User', but then the relationship would only be 1-way
         ref: "User.posts",
-        // this is some customisations for changing how this will look in the AdminUI
         ui: {
           displayMode: "cards",
           cardFields: ["name", "email"],
@@ -104,17 +82,11 @@ var lists = {
           linkToItem: true,
           inlineConnect: true
         },
-        // a Post can only have one author
-        //   this is the default, but we show it here for verbosity
         many: false
       }),
-      // with this field, you can add some Tags to Posts
       tags: (0, import_fields.relationship)({
-        // we could have used 'Tag', but then the relationship would only be 1-way
         ref: "Tag.posts",
-        // a Post can have many Tags, not just one
         many: true,
-        // this is some customisations for changing how this will look in the AdminUI
         ui: {
           displayMode: "cards",
           cardFields: ["name"],
@@ -126,21 +98,13 @@ var lists = {
       })
     }
   }),
-  // this last list is our Tag list, it only has a name field for now
   Tag: (0, import_core.list)({
-    // WARNING
-    //   for this starter project, anyone can create, query, update and delete anything
-    //   if you want to prevent random people on the internet from accessing your data,
-    //   you can find out more at https://keystonejs.com/docs/guides/auth-and-access-control
     access: import_access.allowAll,
-    // setting this to isHidden for the user interface prevents this list being visible in the Admin UI
     ui: {
       isHidden: true
     },
-    // this is the fields for our Tag list
     fields: {
       name: (0, import_fields.text)(),
-      // this can be helpful to find out all the Posts associated with a Tag
       posts: (0, import_fields.relationship)({ ref: "Post.tags", many: true })
     }
   }),
@@ -163,6 +127,21 @@ var lists = {
       banner: (0, import_fields.image)({ storage: "my_images" }),
       attachment: (0, import_fields.file)({ storage: "my_files" }),
       isPublished: (0, import_fields.checkbox)({ defaultValue: false, label: "Published" })
+    }
+  }),
+  Message: (0, import_core.list)({
+    access: import_access.allowAll,
+    fields: {
+      name: (0, import_fields.text)(),
+      email: (0, import_fields.text)(),
+      phone: (0, import_fields.text)(),
+      enquiryType: (0, import_fields.text)(),
+      message: (0, import_fields.text)({
+        ui: {
+          displayMode: "textarea"
+        }
+      }),
+      date: (0, import_fields.calendarDay)()
     }
   })
 };
@@ -209,6 +188,34 @@ async function getPages(req, res, context) {
   res.json(pages);
 }
 
+// routes/contact.ts
+async function postContact(req, res, context) {
+  const body = req.body;
+  console.log(body);
+  const date = /* @__PURE__ */ new Date();
+  const formattedDate = date.toISOString().split("T")[0];
+  const { name, email, phone, enquiryType, message } = body;
+  try {
+    if (!name || !email || !phone || !enquiryType || !message) {
+      return res.status(400).json({ error: "Please fill in all fields" });
+    }
+    const contact = await context.query.Message.createOne({
+      data: {
+        name,
+        email,
+        phone,
+        enquiryType,
+        message,
+        date: formattedDate
+      }
+    });
+    res.status(201).json(contact);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Something went wrong" });
+  }
+}
+
 // access/access.ts
 var import_jsonwebtoken = __toESM(require("jsonwebtoken"));
 var import_roarr = require("roarr");
@@ -225,7 +232,6 @@ function ensureToken(req, res, next) {
       } else {
         const decodedToken = import_jsonwebtoken.default.verify(bearerToken, secretKey);
         const frontAPIkey = process.env.FRONT_API_KEY;
-        console.log(decodedToken);
         if (typeof decodedToken !== "object") {
           console.error("Invalid token");
           res.statusMessage = "Invalid token";
@@ -287,6 +293,7 @@ var session = (0, import_session.statelessSessions)({
 });
 
 // keystone.ts
+var import_body_parser = __toESM(require("body-parser"));
 function withContext(commonContext, f) {
   return async (req, res) => {
     ensureToken(req, res, () => f(req, res, commonContext));
@@ -304,10 +311,13 @@ var keystone_default = withAuth(
     server: {
       extendExpressApp: (app, commonContext) => {
         app.use((0, import_cors.default)({ origin: "http://localhost:3001" }));
+        app.use(import_body_parser.default.urlencoded({ extended: true }));
+        app.use(import_body_parser.default.json());
         app.get("/api", withContext(commonContext, (req, res, context) => {
           res.render("index", { title: "Express" });
         }));
         app.get("/api/pages", withContext(commonContext, getPages));
+        app.post("/api/contact", withContext(commonContext, postContact));
       }
     },
     lists,
