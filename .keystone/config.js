@@ -131,6 +131,11 @@ var lists = {
   }),
   Message: (0, import_core.list)({
     access: import_access.allowAll,
+    ui: {
+      listView: {
+        initialColumns: ["name", "email", "phone", "enquiryType", "message", "date"]
+      }
+    },
     fields: {
       name: (0, import_fields.text)(),
       email: (0, import_fields.text)(),

@@ -98,6 +98,11 @@ export const lists: Lists = {
 
   Message: list({
     access: allowAll,
+    ui: {
+      listView: {
+        initialColumns: ['name', 'email', 'phone', 'enquiryType', 'message', 'date'],
+      },
+    },
     fields: {
       name: text(),
       email: text(),

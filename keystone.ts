@@ -14,6 +14,7 @@ import { lists } from './schema';
 import { storageConfig } from './storage.config';
 import { type TypeInfo, type Context } from '.keystone/types'
 import { getPages } from './routes/pages';
+import { getPosts } from './routes/posts';
 import { postContact } from './routes/contact';
 import { ensureToken } from './access/access';
 
@@ -34,9 +35,6 @@ function withContext<F extends (req: Request, res: Response, context: Context) =
 export default withAuth(
   config({
     db: {
-      // we're using sqlite for the fastest startup experience
-      //   for more information on what database might be appropriate for you
-      //   see https://keystonejs.com/docs/guides/choosing-a-database#title
       provider: 'sqlite',
       url: 'file:./keystone.db',
     },
@@ -47,8 +45,8 @@ export default withAuth(
         app.use(bodyParser.json());
         app.get("/api", withContext(commonContext, (req, res, context) => { res.render('index', { title: 'Express' })}))
         app.get('/api/pages', withContext(commonContext, getPages))
+        app.get('/api/posts', withContext(commonContext, getPosts))
         app.post('/api/contact', withContext(commonContext, postContact))
-        // app.put('/rest/tasks', withContext(commonContext, putTask));
       },
     },
     lists,
